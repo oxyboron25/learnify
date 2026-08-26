@@ -403,7 +403,7 @@ body {
   font-size: 3rem;
   letter-spacing: -0.01em;
   margin: 0 0 12px;
-  color: #f4f2ff;
+  color: var(--hero-text);
 }
 
 .hero p {
@@ -669,7 +669,7 @@ body {
 }
 
 .src-youtube { background: rgba(239, 68, 68, 0.12); color: #f87171; }
-.src-medium { background: #f9fafb; color: var(--text); }
+.src-medium { background: var(--raised); color: var(--text); border: 1px solid var(--border-strong); }
 .src-docs { background: rgba(59, 130, 246, 0.14); color: #7cb0ff; }
 .src-freecodecamp { background: rgba(52, 211, 153, 0.12); color: #34d399; }
 .src-github { background: rgba(139, 92, 246, 0.14); color: #b8a6ff; }
@@ -948,7 +948,7 @@ body {
   font-weight: 400;
   font-size: 1.6rem;
   margin: 0 0 10px;
-  color: #f4f2ff;
+  color: var(--hero-text);
 }
 
 .test-understanding p {
@@ -1326,7 +1326,7 @@ body {
   font-style: italic;
   font-weight: 400;
   font-size: 2.2rem;
-  color: #f4f2ff;
+  color: var(--hero-text);
 }
 
 .page-title p {
@@ -1426,13 +1426,13 @@ body {
 }
 
 .btn-dark {
-  background: #e9ecf5;
+  background: var(--text);
   color: var(--bg);
   padding: 11px 20px;
 }
 
 .btn-dark:hover {
-  background: #fff;
+  opacity: 0.9;
 }
 
 /* ---------- Library ---------- */
@@ -1767,7 +1767,7 @@ body {
   font-weight: 400;
   font-size: 2.4rem;
   margin-bottom: 20px;
-  color: #f4f2ff;
+  color: var(--hero-text);
 }
 
 .tutor-chips {
@@ -2175,3 +2175,17 @@ body {
   outline: 2px solid var(--glass-border);
   outline-offset: 2px;
 }
+
+/* ---------- Light-mode contrast fixes for tinted badges ---------- */
+
+:root[data-theme="light"] .pill-beginner,
+:root[data-theme="light"] .src-docs,
+:root[data-theme="light"] .src-official { color: #2563eb; }
+
+:root[data-theme="light"] .pill-intermediate,
+:root[data-theme="light"] .src-article { color: #b45309; }
+
+:root[data-theme="light"] .pill-advanced { color: #be185d; }
+:root[data-theme="light"] .src-youtube { color: #b91c1c; }
+:root[data-theme="light"] .src-freecodecamp { color: #047857; }
+:root[data-theme="light"] .src-github { color: #6d28d9; }
