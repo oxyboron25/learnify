@@ -1,4 +1,4 @@
-# Learnify 🚀
+# Learnify 
 
 Personalized, gamified learning roadmaps for software development topics — powered by Gemini.
 
