@@ -1,7 +1,12 @@
+from django.conf import settings
 from django.db import models
 
 
 class Roadmap(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        null=True, blank=True, related_name="roadmaps",
+    )
     topic = models.CharField(max_length=200)
     level = models.CharField(max_length=20)
     goal = models.TextField(blank=True)
@@ -35,6 +40,10 @@ class Artifact(models.Model):
     """Generic container for AI-generated plans, courses, guides and quizzes."""
     KINDS = ["plan", "course", "guide", "quiz"]
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        null=True, blank=True, related_name="artifacts",
+    )
     kind = models.CharField(max_length=20)
     topic = models.CharField(max_length=200)
     data = models.JSONField(default=dict)

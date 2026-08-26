@@ -6,3 +6,6 @@ __pycache__/
 db.sqlite3
 frontend/dist/
 .DS_Store
+
+# session handoff - never commit
+HANDOFF.md

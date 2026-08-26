@@ -16,9 +16,9 @@ const LIBRARY_ITEMS = [
   { key: "quiz", label: "Quizzes" },
 ];
 
-export default function Sidebar({ view, setView, open }) {
+export default function Sidebar({ view, setView, user, onLogout }) {
   return (
-    <aside className={`sidebar ${open ? "open" : ""}`}>
+    <aside className="sidebar">
       <div className="side-top">
         <a className="logo side-logo" onClick={() => setView({ page: "roadmap" })}>
           <span className="logo-mark">
@@ -30,8 +30,7 @@ export default function Sidebar({ view, setView, open }) {
           Learnify
         </a>
         <div className="side-brand">
-          <strong>AI Tutor</strong>
-          <span>Your personalized learning companion</span>
+          <em className="side-tagline">Your personalized learning companion</em>
         </div>
 
         <div className="side-group">
@@ -73,21 +72,33 @@ export default function Sidebar({ view, setView, open }) {
           >
             Community
           </button>
+          <button
+            className={`side-link ${view.page === "settings" ? "active" : ""}`}
+            onClick={() => setView({ page: "settings" })}
+          >
+            Settings
+          </button>
         </div>
 
-        <div className="upgrade-box">
-          <strong>Upgrade</strong>
-          <span>Unlimited AI chats, courses, guides, roadmaps and more.</span>
-          <em>Free demo user</em>
-        </div>
+        {!user.is_premium && (
+          <button className="upgrade-box" onClick={() => setView({ page: "settings" })}>
+            <strong>Upgrade</strong>
+            <span>Unlimited AI chats, courses, guides, roadmaps and more.</span>
+          </button>
+        )}
       </div>
 
       <div className="side-profile">
-        <Avatar name="Ankit" />
+        <Avatar name={user.first_name || user.username} url={user.avatar_url} />
         <div className="user-meta">
-          <span className="user-name">Ankit</span>
-          <span className="user-plan">Free User</span>
+          <span className="user-name">{user.first_name || user.username}</span>
+          <span className="user-plan">{user.is_premium ? "Premium" : "Free User"}</span>
         </div>
+        <button className="logout-btn" onClick={onLogout} title="Log out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
     </aside>
   );

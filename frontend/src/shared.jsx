@@ -1,14 +1,14 @@
 import { useState } from "react";
 
-export function Avatar({ name }) {
+export function Avatar({ name, url }) {
   const [failed, setFailed] = useState(false);
-  if (failed) {
-    return <div className="avatar avatar-fallback">{name[0]}</div>;
+  if (!url || failed) {
+    return <div className="avatar avatar-fallback">{(name || "?")[0].toUpperCase()}</div>;
   }
   return (
     <img
       className="avatar"
-      src="https://i.pravatar.cc/96?img=13"
+      src={url}
       alt={name}
       onError={() => setFailed(true)}
     />

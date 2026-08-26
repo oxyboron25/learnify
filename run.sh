@@ -16,6 +16,7 @@ done
 
 source venv/bin/activate
 python manage.py migrate --noinput > /dev/null 2>&1
+python manage.py ensure_admin
 python manage.py runserver 8000 &
 BACKEND_PID=$!
 

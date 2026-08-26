@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import API from "./api";
+import API, { post } from "./api";
 
 const SUGGESTIONS = [
   "What roadmap should I pick?",
@@ -27,18 +27,13 @@ export default function TutorChat({ topic }) {
     setMessages((m) => [...m, { role: "user", text: question }]);
     setBusy(true);
     try {
-      const res = await fetch(`${API}/ask/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, roadmap_id: null }),
-      });
-      const data = await res.json();
+      const data = await post("/ask/", { question, roadmap_id: null });
       setMessages((m) => [
         ...m,
         { role: "bot", text: data.answer || data.error || "Something went wrong." },
       ]);
-    } catch {
-      setMessages((m) => [...m, { role: "bot", text: "Could not reach the tutor. Is the backend running?" }]);
+    } catch (err) {
+      setMessages((m) => [...m, { role: "bot", text: err.message || "Could not reach the tutor." }]);
     } finally {
       setBusy(false);
     }

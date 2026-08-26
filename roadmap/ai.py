@@ -1,12 +1,13 @@
 """AI generation endpoints: plan, course, guide, quiz. One Gemini call each."""
 import json
-import os
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from accounts.keys import UsageLimitExceeded, resolve_gemini_key
 from .models import Artifact
 
 load_dotenv()
@@ -14,9 +15,8 @@ load_dotenv()
 GEMINI_TIMEOUT = 25
 
 
-def _gemini_json(prompt, schema):
+def _gemini_json(prompt, schema, api_key=None):
     """One Gemini call, max one retry. Returns parsed dict or None."""
-    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return None
     for _attempt in range(2):
@@ -160,13 +160,29 @@ QUIZ_FALLBACK = {
 }
 
 
-def _save_artifact(kind, topic, data):
-    row = Artifact.objects.create(kind=kind, topic=topic, data=data)
+def _save_artifact(kind, topic, data, user=None):
+    row = Artifact.objects.create(
+        kind=kind, topic=topic, data=data,
+        user=user if getattr(user, "is_authenticated", False) else None,
+    )
     return {"id": row.id, "kind": kind, "topic": row.topic, "data": row.data}
+
+
+def _key_for(request):
+    try:
+        return resolve_gemini_key(request.user), None
+    except UsageLimitExceeded:
+        return None, Response(
+            {"error": "Free daily AI limit reached. Upgrade to Premium or add your own API key (BYOK) in Settings."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
 
 @api_view(["POST"])
 def gen_plan(request):
+    api_key, err = _key_for(request)
+    if err:
+        return err
     answers = request.data.get("answers", {})
     goal = str(answers.get("goal", ""))
     experience = str(answers.get("experience", "beginner"))
@@ -182,14 +198,17 @@ def gen_plan(request):
         "Return JSON with title, summary, and weeks (4 to 8 weeks). Each week has "
         "week (number), focus (short string) and tasks (3 to 5 concrete strings)."
     )
-    data = _gemini_json(prompt, PLAN_SCHEMA)
+    data = _gemini_json(prompt, PLAN_SCHEMA, api_key)
     if not data or not data.get("weeks"):
         data = {**PLAN_FALLBACK, "title": f"Learning Plan: {goal or 'Software Development'}"}
-    return Response(_save_artifact("plan", goal or interests or "Learning Plan", data))
+    return Response(_save_artifact("plan", goal or interests or "Learning Plan", data, request.user))
 
 
 @api_view(["POST"])
 def gen_course(request):
+    api_key, err = _key_for(request)
+    if err:
+        return err
     topic = str(request.data.get("topic", "")).strip()
     level = str(request.data.get("level", "beginner"))
     if not topic:
@@ -200,14 +219,17 @@ def gen_course(request):
         "Return JSON with title, summary, and modules (5 to 8). Each module has "
         "title and lessons (3 to 5 short lesson-name strings)."
     )
-    data = _gemini_json(prompt, COURSE_SCHEMA)
+    data = _gemini_json(prompt, COURSE_SCHEMA, api_key)
     if not data or not data.get("modules"):
         data = {**COURSE_FALLBACK, "title": f"Course: {topic}"}
-    return Response(_save_artifact("course", topic, data))
+    return Response(_save_artifact("course", topic, data, request.user))
 
 
 @api_view(["POST"])
 def gen_guide(request):
+    api_key, err = _key_for(request)
+    if err:
+        return err
     topic = str(request.data.get("topic", "")).strip()
     if not topic:
         return Response({"error": "topic is required"}, status=400)
@@ -217,14 +239,17 @@ def gen_guide(request):
         "Return JSON with title and sections (4 to 6). Each section has heading and "
         "body (a solid paragraph, plain text, no markdown)."
     )
-    data = _gemini_json(prompt, GUIDE_SCHEMA)
+    data = _gemini_json(prompt, GUIDE_SCHEMA, api_key)
     if not data or not data.get("sections"):
         data = {**GUIDE_FALLBACK, "title": f"Guide: {topic}"}
-    return Response(_save_artifact("guide", topic, data))
+    return Response(_save_artifact("guide", topic, data, request.user))
 
 
 @api_view(["POST"])
 def gen_quiz(request):
+    api_key, err = _key_for(request)
+    if err:
+        return err
     topic = str(request.data.get("topic", "")).strip()
     fmt = str(request.data.get("format", "mcq"))
     if not topic:
@@ -246,17 +271,21 @@ def gen_quiz(request):
         f"{instruction}\n"
         'Return JSON with title and questions.'
     )
-    data = _gemini_json(prompt, QUIZ_SCHEMA)
+    data = _gemini_json(prompt, QUIZ_SCHEMA, api_key)
     if not data or not data.get("questions"):
         data = {**QUIZ_FALLBACK, "title": f"Quiz: {topic}"}
-    return Response(_save_artifact("quiz", topic, data))
+    return Response(_save_artifact("quiz", topic, data, request.user))
 
 
 @api_view(["GET"])
 def library(request):
     kind = request.GET.get("kind", "")
     q = request.GET.get("q", "").strip()
-    rows = Artifact.objects.all().order_by("-created_at")
+    if request.user.is_authenticated:
+        rows = Artifact.objects.filter(user=request.user)
+    else:
+        rows = Artifact.objects.filter(user__isnull=True)
+    rows = rows.order_by("-created_at")
     if kind in Artifact.KINDS:
         rows = rows.filter(kind=kind)
     if q:

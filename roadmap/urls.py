@@ -7,7 +7,7 @@ from . import ai, community, views
 
 @api_view(["GET"])
 def roadmap_list(request):
-    rows = views.Roadmap.objects.all().order_by("-created_at")
+    rows = views._visible_roadmaps(request.user).order_by("-created_at")
     q = request.GET.get("q", "").strip()
     if q:
         rows = rows.filter(topic__icontains=q)

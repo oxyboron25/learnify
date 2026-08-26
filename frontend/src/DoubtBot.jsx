@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import API from "./api";
+import API, { post } from "./api";
 
 export default function DoubtBot({ roadmapId, topic }) {
   const [open, setOpen] = useState(false);
@@ -26,18 +26,13 @@ export default function DoubtBot({ roadmapId, topic }) {
     setMessages((m) => [...m, { role: "user", text: q }]);
     setBusy(true);
     try {
-      const res = await fetch(`${API}/ask/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, roadmap_id: roadmapId }),
-      });
-      const data = await res.json();
+      const data = await post("/ask/", { question: q, roadmap_id: roadmapId });
       setMessages((m) => [
         ...m,
         { role: "bot", text: data.answer || data.error || "Something went wrong." },
       ]);
-    } catch {
-      setMessages((m) => [...m, { role: "bot", text: "Could not reach the tutor. Is the backend running?" }]);
+    } catch (err) {
+      setMessages((m) => [...m, { role: "bot", text: err.message || "Could not reach the tutor." }]);
     } finally {
       setBusy(false);
     }

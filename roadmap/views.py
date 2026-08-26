@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import date, timedelta
 
 import google.generativeai as genai
@@ -8,6 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from accounts.keys import UsageLimitExceeded, resolve_gemini_key
 from .fallback_roadmap import FALLBACK_ROADMAP
 from .models import Roadmap
 
@@ -138,9 +138,8 @@ def _sanitize_final_challenge(data):
     }
 
 
-def generate_with_gemini(topic, level, goal):
+def generate_with_gemini(topic, level, goal, api_key):
     """One Gemini call. Returns validated dict or None. Never retries more than once."""
-    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return None
 
@@ -190,6 +189,13 @@ def generate_with_gemini(topic, level, goal):
 @api_view(["POST"])
 def ask_doubt(request):
     """One Gemini call per question. No retries beyond one."""
+    try:
+        api_key = resolve_gemini_key(request.user)
+    except UsageLimitExceeded:
+        return Response(
+            {"error": "Free daily AI limit reached. Upgrade to Premium or add your own API key (BYOK) in Settings."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
     question = request.data.get("question", "").strip()
     if not question:
         return Response({"error": "question is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -215,7 +221,6 @@ def ask_doubt(request):
         f"Learner's doubt: {question}"
     )
 
-    api_key = os.getenv("GEMINI_API_KEY")
     answer = None
     if api_key:
         for attempt in range(2):
@@ -255,12 +260,21 @@ def generate(request):
     if not topic:
         return Response({"error": "topic is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-    roadmap_data = generate_with_gemini(topic, level, goal)
+    try:
+        api_key = resolve_gemini_key(request.user)
+    except UsageLimitExceeded:
+        return Response(
+            {"error": "Free daily AI limit reached. Upgrade to Premium or add your own API key (BYOK) in Settings."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    roadmap_data = generate_with_gemini(topic, level, goal, api_key)
     used_fallback = roadmap_data is None
     if used_fallback:
         roadmap_data = {**FALLBACK_ROADMAP, "topic": topic or FALLBACK_ROADMAP["topic"], "level": level or "beginner"}
 
     row = Roadmap.objects.create(
+        user=request.user if request.user.is_authenticated else None,
         topic=roadmap_data.get("topic", topic),
         level=roadmap_data.get("level", level),
         goal=roadmap_data.get("goal", goal),
@@ -279,7 +293,17 @@ def detail(request, pk):
         row = Roadmap.objects.get(pk=pk)
     except Roadmap.DoesNotExist:
         return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
+    if request.user.is_authenticated and row.user is not None and row.user != request.user:
+        return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
     return Response(row.serialize())
+
+
+def _visible_roadmaps(user):
+    """Authenticated users see their own roadmaps; anonymous sees all (demo mode)."""
+    qs = Roadmap.objects.all()
+    if user.is_authenticated:
+        return qs.filter(user=user)
+    return qs.filter(user__isnull=True)
 
 
 @api_view(["PATCH"])
