@@ -57,7 +57,11 @@ export function GoogleIcon() {
 
 export default function AuthPage({ onAuthed }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    username: "demo@learnify.app",
+    email: "demo@learnify.app",
+    password: "demo1234",
+  });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
